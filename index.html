@@ -1,6 +1,248 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <meta charset="UTF-8" />
+    <!-- Mobile-friendly viewport -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Barcode Scanner App</title>
+    <style>
+        /* Basic styling for responsiveness and mobile view */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        #app {
+            padding: 16px;
+            max-width: 480px;
+            margin: auto;
+        }
+        h1 {
+            text-align: center;
+        }
+        button {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            font-size: 1em;
+            margin: 8px 0;
+        }
+        #scanner-container {
+            position: relative;
+            width: 100%;
+        }
+        /* Quagga attaches a video element; ensure it fills the container */
+        #scanner-container video {
+            width: 100%;
+            height: auto;
+        }
+        /* Styling for form labels and inputs */
+        label {
+            display: block;
+            margin-top: 8px;
+            font-weight: bold;
+        }
+        input[type="text"], input[type="date"], input[type="number"], textarea {
+            width: 100%;
+            padding: 8px;
+            margin: 4px 0;
+            box-sizing: border-box;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <h1>Barcode Scanner App</h1>
+        <!-- Button to start scanning -->
+        <button id="start-scan-btn">Scan Code 39</button>
+        <!-- Container for the camera stream (Quagga will use this) -->
+        <div id="scanner-container" style="display:none;"></div>
+        <!-- Container for showing or editing the scanned data -->
+        <div id="result-container" style="display:none;"></div>
+    </div>
+
+    <!-- Include QuaggaJS library (from CDN) -->
+    <script src="https://cdn.jsdelivr.net/npm/quagga@0.12.1/dist/quagga.min.js"></script>
+
+    <script>
+        // Reference to UI elements
+        const startButton = document.getElementById('start-scan-btn');
+        const scannerContainer = document.getElementById('scanner-container');
+        const resultContainer = document.getElementById('result-container');
+
+        // When the "Scan" button is clicked, start the camera scanner
+        startButton.addEventListener('click', startScanner);
+
+        // Function to start Quagga and begin scanning
+        function startScanner() {
+            // Hide previous results
+            resultContainer.style.display = 'none';
+            resultContainer.innerHTML = '';
+
+            // Update UI: hide the start button and show the scanner
+            startButton.style.display = 'none';
+            scannerContainer.style.display = 'block';
+
+            // Configure QuaggaJS to use live video stream and Code 39 decoder
+            Quagga.init({
+                inputStream: {
+                    name: 'Live',
+                    type: 'LiveStream',
+                    target: scannerContainer,      // the <div> for camera view
+                    constraints: {
+                        facingMode: 'environment'  // use back camera on mobile
+                    }
+                },
+                decoder: {
+                    readers: ['code_39_reader']   // only decode Code 39 barcodes
+                }
+            }, function(err) {
+                if (err) {
+                    console.error(err);
+                    alert('Quagga initialization error: ' + err.message);
+                    return;
+                }
+                // Start the scanning process
+                Quagga.start();
+            });
+
+            // Event listener: barcode detected
+            Quagga.onDetected(onBarcodeDetected);
+        }
+
+        // Callback when a barcode is detected
+        function onBarcodeDetected(result) {
+            const code = result.codeResult.code;
+            console.log('Detected Barcode: ' + code);
+
+            // Stop further scanning
+            Quagga.offDetected(onBarcodeDetected);
+            Quagga.stop();
+
+            // Hide the scanner and show the start button for next time
+            scannerContainer.style.display = 'none';
+            startButton.style.display = 'block';
+            startButton.textContent = 'Scan Another Code';
+
+            // Handle the scanned barcode (view or input data)
+            handleScannedCode(code);
+        }
+
+        // Function to display existing data or entry form for a barcode
+        function handleScannedCode(code) {
+            // Get stored data from localStorage (or empty object)
+            let allData = JSON.parse(localStorage.getItem('barcodeData') || '{}');
+
+            // If data exists for this code, display it
+            if (allData[code]) {
+                const item = allData[code];
+                resultContainer.innerHTML = `
+                    <p><strong>Barcode:</strong> ${code}</p>
+                    <p><strong>Name:</strong> ${item.name}</p>
+                    <p><strong>Expiration Date:</strong> ${item.expiration}</p>
+                    <p><strong>Quantity:</strong> ${item.quantity}</p>
+                    <p><strong>Notes:</strong> ${item.notes}</p>
+                    <button id="edit-btn">Edit</button>
+                `;
+                resultContainer.style.display = 'block';
+
+                // Allow editing the existing data
+                document.getElementById('edit-btn').addEventListener('click', function() {
+                    showDataForm(code, item);
+                });
+            } else {
+                // No data exists: show a form to add new info
+                showDataForm(code, null);
+            }
+        }
+
+        // Function to show a form for adding or editing item details
+        function showDataForm(code, existingData) {
+            resultContainer.innerHTML = `
+                <p><strong>Barcode:</strong> ${code}</p>
+                <form id="data-form">
+                    <label for="name">Name:</label>
+                    <input type="text" id="name" name="name" required><br>
+                    <label for="expiration">Expiration Date:</label>
+                    <input type="date" id="expiration" name="expiration"><br>
+                    <label for="quantity">Quantity:</label>
+                    <input type="number" id="quantity" name="quantity" min="0"><br>
+                    <label for="notes">Notes:</label>
+                    <textarea id="notes" name="notes" rows="3"></textarea><br>
+                    <button type="submit">Save</button>
+                    <button type="button" id="cancel-btn">Cancel</button>
+                </form>
+            `;
+            resultContainer.style.display = 'block';
+
+            // Pre-fill form fields if editing existing data
+            if (existingData) {
+                document.getElementById('name').value = existingData.name;
+                document.getElementById('expiration').value = existingData.expiration;
+                document.getElementById('quantity').value = existingData.quantity;
+                document.getElementById('notes').value = existingData.notes;
+            }
+
+            // Save the data when the form is submitted
+            document.getElementById('data-form').addEventListener('submit', function(e) {
+                e.preventDefault();
+                saveData(code);
+            });
+
+            // Handle cancel: either go back to view or clear form
+            document.getElementById('cancel-btn').addEventListener('click', function() {
+                if (existingData) {
+                    // If editing, show the view again
+                    handleScannedCode(code);
+                } else {
+                    // If adding new and cancelled, just hide the form
+                    resultContainer.style.display = 'none';
+                }
+            });
+        }
+
+        // Function to save the entered data for a barcode into localStorage
+        function saveData(code) {
+            const name = document.getElementById('name').value.trim();
+            const expirationInput = document.getElementById('expiration').value;
+            const quantity = parseInt(document.getElementById('quantity').value);
+            const notes = document.getElementById('notes').value.trim();
+
+            if (!name) {
+                alert('Please enter a name.');
+                return;
+            }
+            // Convert date to DD.MM.YYYY format if provided
+            let expFormatted = '';
+            if (expirationInput) {
+                const parts = expirationInput.split('-'); // YYYY-MM-DD
+                if (parts.length === 3) {
+                    expFormatted = parts[2] + '.' + parts[1] + '.' + parts[0];
+                }
+            }
+
+            // Create the object to store
+            const itemData = {
+                name: name,
+                expiration: expFormatted,
+                quantity: isNaN(quantity) ? 0 : quantity,
+                notes: notes
+            };
+
+            // Save/update in localStorage under this barcode key
+            let allData = JSON.parse(localStorage.getItem('barcodeData') || '{}');
+            allData[code] = itemData;
+            localStorage.setItem('barcodeData', JSON.stringify(allData));
+
+            // Show the saved data view
+            handleScannedCode(code);
+        }
+    </script>
+</body>
+</html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Pharmacy Scanner</title>

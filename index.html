@@ -80,6 +80,13 @@
     #importFile {
       margin-top: 10px;
     }
+    #barcodeDisplay {
+      font-size: 20px;
+      font-weight: bold;
+      color: #00796b;
+      text-align: center;
+      margin-bottom: 10px;
+    }
   </style>
 </head>
 <body>
@@ -89,6 +96,7 @@
 <video id="scanner" style="width: 100%; max-width: 400px; margin: auto; display: block; border-radius: 12px;"></video>
 
 <div id="form" style="display: none;">
+  <div id="barcodeDisplay"></div> <!-- Barcode number shown here -->
   <h2>Enter Medicine Info</h2>
   <input type="text" id="name" placeholder="Medicine Name">
   <input type="date" id="expiry">
@@ -164,6 +172,7 @@
     document.getElementById('expiry').value = med.expiry;
     document.getElementById('quantity').value = med.quantity;
     document.getElementById('notes').value = med.notes;
+    document.getElementById('barcodeDisplay').innerText = `Barcode: ${code}`;
     document.getElementById('form').style.display = 'block';
   }
 
@@ -220,6 +229,7 @@
   codeReader.decodeFromVideoDevice(undefined, 'scanner', (result, err) => {
     if (result) {
       scannedCode = result.text;
+      document.getElementById('barcodeDisplay').innerText = `Barcode: ${scannedCode}`;
       if (medicines[scannedCode]) {
         editMedicine(scannedCode);
       } else {

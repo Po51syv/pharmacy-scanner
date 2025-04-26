@@ -10,9 +10,11 @@
     #medicineList { margin-top: 20px; }
     .medicine-item { background: white; padding: 10px; margin-bottom: 10px; border-radius: 8px; }
     input, textarea, button { width: 100%; padding: 10px; margin-top: 10px; border-radius: 5px; border: 1px solid #ccc; }
-    button { background-color: #4CAF50; color: white; font-weight: bold; cursor: pointer; }
+    button { background-color: #4CAF50; color: white; font-weight: bold; cursor: pointer; margin-top: 5px; }
     button:hover { background-color: #45a049; }
     .warning { color: red; font-weight: bold; }
+    .btn-small { padding: 5px; font-size: 14px; margin-right: 5px; }
+    #importFile { margin-top: 10px; }
   </style>
 </head>
 <body>
@@ -32,6 +34,11 @@
 
 <h2>Saved Medicines</h2>
 <div id="medicineList"></div>
+
+<h2>Backup / Restore</h2>
+<button onclick="exportData()">Export Backup</button>
+<br><br>
+<input type="file" id="importFile" onchange="importData()" />
 
 <script src="https://unpkg.com/@zxing/library@latest"></script>
 <script>
@@ -54,8 +61,9 @@
           <strong>${med.name}</strong> (Code: ${code})<br>
           Expiry: ${med.expiry} (${daysLeft} days left) ${warning}<br>
           Quantity: ${med.quantity}<br>
-          Notes: ${med.notes || 'None'}
-          <br><button onclick="editMedicine('${code}')">Edit</button>
+          Notes: ${med.notes || 'None'}<br>
+          <button class="btn-small" onclick="editMedicine('${code}')">Edit</button>
+          <button class="btn-small" style="background-color: red;" onclick="removeMedicine('${code}')">Remove</button>
         </div>
       `;
     }
@@ -89,7 +97,55 @@
     document.getElementById('form').style.display = 'block';
   }
 
-  // Barcode scanner
+  function removeMedicine(code) {
+    if (confirm(`Are you sure you want to remove ${medicines[code].name}?`)) {
+      delete medicines[code];
+      localStorage.setItem('medicines', JSON.stringify(medicines));
+      updateMedicineList();
+    }
+  }
+
+  function exportData() {
+    const dataStr = JSON.stringify(medicines, null, 2);
+    const blob = new Blob([dataStr], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'pharmacy_backup.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }
+
+  function importData() {
+    const fileInput = document.getElementById('importFile');
+    const file = fileInput.files[0];
+    if (!file) {
+      alert("Please select a file!");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      try {
+        const importedData = JSON.parse(e.target.result);
+        if (typeof importedData === 'object') {
+          medicines = importedData;
+          localStorage.setItem('medicines', JSON.stringify(medicines));
+          updateMedicineList();
+          alert("Backup restored successfully!");
+        } else {
+          alert("Invalid file format!");
+        }
+      } catch (error) {
+        alert("Failed to read file!");
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  // Start barcode scanner
   const codeReader = new ZXing.BrowserBarcodeReader();
   codeReader.decodeFromVideoDevice(undefined, 'scanner', (result, err) => {
     if (result) {
@@ -111,4 +167,3 @@
 
 </body>
 </html>
-

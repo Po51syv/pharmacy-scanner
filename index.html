@@ -5,23 +5,88 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Pharmacy Scanner</title>
   <style>
-    body { font-family: sans-serif; padding: 20px; background: #f5f5f5; }
-    h1 { text-align: center; }
-    #medicineList { margin-top: 20px; }
-    .medicine-item { background: white; padding: 10px; margin-bottom: 10px; border-radius: 8px; }
-    input, textarea, button { width: 100%; padding: 10px; margin-top: 10px; border-radius: 5px; border: 1px solid #ccc; }
-    button { background-color: #4CAF50; color: white; font-weight: bold; cursor: pointer; margin-top: 5px; }
-    button:hover { background-color: #45a049; }
-    .warning { color: red; font-weight: bold; }
-    .btn-small { padding: 5px; font-size: 14px; margin-right: 5px; }
-    #importFile { margin-top: 10px; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #e0f7fa, #ffffff);
+      padding: 20px;
+      margin: 0;
+    }
+    h1 {
+      text-align: center;
+      color: #00796b;
+      margin-bottom: 30px;
+    }
+    #medicineList {
+      margin-top: 20px;
+    }
+    .medicine-item {
+      background: white;
+      padding: 15px;
+      margin-bottom: 15px;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    .medicine-title {
+      font-size: 18px;
+      font-weight: bold;
+      color: #00796b;
+    }
+    .medicine-info {
+      margin-top: 5px;
+      font-size: 14px;
+      color: #555;
+    }
+    input, textarea, button {
+      width: 100%;
+      padding: 12px;
+      margin-top: 10px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      font-size: 16px;
+    }
+    button {
+      background-color: #00796b;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+    button:hover {
+      background-color: #004d40;
+    }
+    .btn-small {
+      width: 48%;
+      padding: 10px;
+      font-size: 14px;
+      margin-top: 8px;
+    }
+    .btn-container {
+      display: flex;
+      justify-content: space-between;
+      gap: 5px;
+      margin-top: 10px;
+    }
+    .btn-remove {
+      background-color: #e53935;
+    }
+    .btn-remove:hover {
+      background-color: #b71c1c;
+    }
+    .warning {
+      color: red;
+      font-weight: bold;
+      margin-top: 5px;
+    }
+    #importFile {
+      margin-top: 10px;
+    }
   </style>
 </head>
 <body>
 
 <h1>Pharmacy Scanner</h1>
 
-<video id="scanner" style="width: 100%; max-width: 400px; margin: auto; display: block;"></video>
+<video id="scanner" style="width: 100%; max-width: 400px; margin: auto; display: block; border-radius: 12px;"></video>
 
 <div id="form" style="display: none;">
   <h2>Enter Medicine Info</h2>
@@ -58,12 +123,17 @@
 
       list.innerHTML += `
         <div class="medicine-item">
-          <strong>${med.name}</strong> (Code: ${code})<br>
-          Expiry: ${med.expiry} (${daysLeft} days left) ${warning}<br>
-          Quantity: ${med.quantity}<br>
-          Notes: ${med.notes || 'None'}<br>
-          <button class="btn-small" onclick="editMedicine('${code}')">Edit</button>
-          <button class="btn-small" style="background-color: red;" onclick="removeMedicine('${code}')">Remove</button>
+          <div class="medicine-title">${med.name} (Code: ${code})</div>
+          <div class="medicine-info">
+            Expiry: ${med.expiry} (${daysLeft} days left)<br>
+            Quantity: ${med.quantity}<br>
+            Notes: ${med.notes || 'None'}
+            ${warning}
+          </div>
+          <div class="btn-container">
+            <button class="btn-small" onclick="editMedicine('${code}')">Edit</button>
+            <button class="btn-small btn-remove" onclick="removeMedicine('${code}')">Remove</button>
+          </div>
         </div>
       `;
     }
@@ -167,3 +237,4 @@
 
 </body>
 </html>
+

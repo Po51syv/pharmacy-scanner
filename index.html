@@ -4,23 +4,25 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Pharmacy Scanner</title>
+  <link rel="manifest" href="manifest.json">
   <style>
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background: linear-gradient(135deg, #e0f7fa, #ffffff);
+      background: var(--bg);
+      color: var(--text);
       padding: 20px;
       margin: 0;
+      transition: background 0.3s, color 0.3s;
     }
-    h1 {
+    h1, h2 {
       text-align: center;
-      color: #00796b;
-      margin-bottom: 30px;
+      color: var(--primary);
     }
     #medicineList {
       margin-top: 20px;
     }
     .medicine-item {
-      background: white;
+      background: var(--card);
       padding: 15px;
       margin-bottom: 15px;
       border-radius: 12px;
@@ -29,30 +31,30 @@
     .medicine-title {
       font-size: 18px;
       font-weight: bold;
-      color: #00796b;
     }
     .medicine-info {
       margin-top: 5px;
       font-size: 14px;
-      color: #555;
     }
-    input, textarea, button {
+    input, textarea, button, select {
       width: 100%;
       padding: 12px;
       margin-top: 10px;
       border-radius: 8px;
       border: 1px solid #ccc;
       font-size: 16px;
+      background: var(--input);
+      color: var(--text);
     }
     button {
-      background-color: #00796b;
+      background-color: var(--primary);
       color: white;
       font-weight: bold;
       cursor: pointer;
       transition: background-color 0.3s;
     }
     button:hover {
-      background-color: #004d40;
+      opacity: 0.9;
     }
     .btn-small {
       width: 48%;
@@ -77,15 +79,30 @@
       font-weight: bold;
       margin-top: 5px;
     }
-    #importFile {
-      margin-top: 10px;
-    }
     #barcodeDisplay {
       font-size: 20px;
       font-weight: bold;
-      color: #00796b;
-      text-align: center;
       margin-bottom: 10px;
+    }
+    .top-controls {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    :root {
+      --bg: #e0f7fa;
+      --text: #000;
+      --primary: #00796b;
+      --card: #ffffff;
+      --input: #ffffff;
+    }
+    .dark {
+      --bg: #121212;
+      --text: #ffffff;
+      --primary: #00bfa5;
+      --card: #1e1e1e;
+      --input: #2c2c2c;
     }
   </style>
 </head>
@@ -93,10 +110,18 @@
 
 <h1>Pharmacy Scanner</h1>
 
+<div class="top-controls">
+  <select id="themeSelect" onchange="changeTheme()">
+    <option value="light">☀️ Light Mode</option>
+    <option value="dark">🌙 Dark Mode</option>
+  </select>
+  <button onclick="toggleFlash()">🔦 Flashlight</button>
+</div>
+
 <video id="scanner" style="width: 100%; max-width: 400px; margin: auto; display: block; border-radius: 12px;"></video>
 
 <div id="form" style="display: none;">
-  <div id="barcodeDisplay"></div> <!-- Barcode number shown here -->
+  <div id="barcodeDisplay"></div> 
   <h2>Enter Medicine Info</h2>
   <input type="text" id="name" placeholder="Medicine Name">
   <input type="date" id="expiry">
@@ -117,6 +142,9 @@
 <script>
   let scannedCode = null;
   let medicines = JSON.parse(localStorage.getItem('medicines')) || {};
+  let codeReader = null;
+  let stream = null;
+  let flashlightOn = false;
 
   function updateMedicineList() {
     const list = document.getElementById('medicineList');
@@ -224,8 +252,34 @@
     reader.readAsText(file);
   }
 
+  function changeTheme() {
+    const theme = document.getElementById('themeSelect').value;
+    if (theme === 'dark') {
+      document.body.classList.add('dark');
+    } else {
+      document.body.classList.remove('dark');
+    }
+  }
+
+  async function toggleFlash() {
+    if (!stream) {
+      alert("Scanner not ready yet!");
+      return;
+    }
+    const track = stream.getVideoTracks()[0];
+    const capabilities = track.getCapabilities();
+    if (!capabilities.torch) {
+      alert("Flashlight not supported on this device.");
+      return;
+    }
+    flashlightOn = !flashlightOn;
+    await track.applyConstraints({
+      advanced: [{torch: flashlightOn}]
+    });
+  }
+
   // Start barcode scanner
-  const codeReader = new ZXing.BrowserBarcodeReader();
+  codeReader = new ZXing.BrowserBarcodeReader();
   codeReader.decodeFromVideoDevice(undefined, 'scanner', (result, err) => {
     if (result) {
       scannedCode = result.text;
@@ -240,11 +294,20 @@
         document.getElementById('notes').value = '';
       }
     }
+  }).then((controls) => {
+    stream = controls.stream;
   });
 
   updateMedicineList();
 </script>
 
+<script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').then(() => {
+      console.log('Service Worker Registered!');
+    });
+  }
+</script>
+
 </body>
 </html>
-
